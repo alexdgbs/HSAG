@@ -45,6 +45,10 @@ app.use('/api/update-subscription', updateSubscriptionHandler);
 app.use('/api/upgrade-admin', upgradeAdminHandler);
 app.use('/api/user', userHandler);
 
+app.get('*', (req, res) => {
+  res.send('Esta ruta manejaría tu frontend dinámico');
+});
+
 // Conectar a MongoDB antes de iniciar el servidor
 connectDB().then(() => {  
   app.listen(PORT, () => {    
