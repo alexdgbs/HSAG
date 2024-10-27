@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nuxt",
     "build": "nuxt build",
-   "start": "concurrently \"nuxt start\"",
+    "start": "concurrently \"nuxt start\"",
     "generate": "nuxt generate",
     "test": "jest",
     "server": "node index.js",
