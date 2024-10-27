@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HSA Advance</title>
+  
+  <style>
+    body {
+      background-color: #ffffff; 
+      font-family: 'Courier New', Courier, monospace; 
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    
+    #navbar {
+      position: absolute;
+      top: 20px;
+      left: 50%; 
+      transform: translateX(-50%); 
+      display: flex;
+      align-items: center;
+    }
+
+ 
+    .back-link {
+      text-decoration: none;
+      color: #3182ce;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+    }
+
+    .back-link img {
+      width: 20px;
+      height: 20px;
+      margin-right: 8px;
+      animation: pulse 1.5s infinite; 
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.2); 
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    #game-container {
+      background-color: #9db69d; 
+      padding: 20px;
+      border-radius: 20px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5); 
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 300px;
+      margin-top: 70px; 
+    }
+
+    #screen {
+      width: 240px; 
+      height: 160px; 
+      background-color: #252525;
+      border-radius: 10px;
+      image-rendering: pixelated; 
+    }
+
+    #controls {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .button, .bigbutton {
+      background-color: #5c6e58;
+      color: white;
+      border: 3px solid #3e4f3b;
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: x-small;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .button:hover, .bigbutton:hover {
+      background-color: #3e4f3b;
+    }
+
+    .button:active, .bigbutton:active {
+      background-color: #2c392c;
+    }
+
+    footer {
+      margin-top: 20px;
+      font-size: 12px;
+      color: #333;
+    }
+    
+    footer a {
+      color: #333;
+      text-decoration: none;
+    }
+    
+    footer a:hover {
+      text-decoration: underline;
+    }
+    p{
+      margin-top: 20px;
+      font-size: 12px;
+      color: #333;
+      font-size: x-small;
+      text-align: center;
+      font-style:normal;
+
+    }
+  </style>
+
+  <script src="js/util.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/arm.js"></script>
+  <script src="js/thumb.js"></script>
+  <script src="js/mmu.js"></script>
+  <script src="js/io.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/video.js"></script>
+  <script src="js/video/proxy.js"></script>
+  <script src="js/video/software.js"></script>
+  <script src="js/irq.js"></script>
+  <script src="js/keypad.js"></script>
+  <script src="js/sio.js"></script>
+  <script src="js/savedata.js"></script>
+  <script src="js/gpio.js"></script>
+  <script src="js/gba.js"></script>
+  <script src="resources/xhr.js"></script>
+
+  <script>
+    var gba;
+    var runCommands = [];
+
+    try {
+      gba = new GameBoyAdvance();
+      gba.keypad.eatInput = true;
+      gba.setLogger(function(level, error) {
+        console.log(error);
+        gba.pause();
+        const screen = document.getElementById('screen');
+        if (screen.classList.contains('dead')) {
+          console.log('We appear to have crashed multiple times without resetting.');
+          return;
+        }
+      });
+    } catch (exception) {
+      gba = null;
+    }
+
+    window.onload = function() {
+      if (gba && FileReader) {
+        const canvas = document.getElementById('screen');
+        gba.setCanvas(canvas);
+        gba.logLevel = gba.LOG_ERROR;
+
+        loadRom('resources/bios.bin', function(bios) {
+          gba.setBios(bios);
+        });
+
+        if (!gba.audio.context) {
+          gba.audio.context = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        gba.audio.masterEnable = true; 
+      } else {
+        document.getElementById('controls').remove();
+      }
+    }
+
+    function run(file) {
+      document.getElementById('select').textContent = 'Loading...';
+      gba.loadRomFromFile(file, function(result) {
+        if (result) {
+          runCommands.forEach(cmd => cmd());
+          runCommands = [];
+          gba.runStable();
+          playAudio();
+          document.getElementById('select').textContent = 'SELECT';
+        } else {
+          document.getElementById('select').textContent = 'FAILED';
+          setTimeout(() => {
+            document.getElementById('select').textContent = 'SELECT';
+          }, 3000);
+        }
+      });
+    }
+
+    function reset() {
+      gba.pause();
+      gba.reset();
+      document.getElementById('select').textContent = 'SELECT';
+    }
+
+    function togglePause() {
+      playAudio(); 
+      const e = document.getElementById('pause');
+      if (gba.paused) {
+        gba.runStable();
+        e.textContent = "PAUSE";
+      } else {
+        gba.pause();
+        e.textContent = "UNPAUSE";
+      }
+    }
+
+    function screenshot() {
+      const canvas = gba.indirectCanvas;
+      window.open(canvas.toDataURL('image/png'), 'screenshot');
+    }
+
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (file) {
+        run(file);
+      }
+    }
+
+    function playAudio() {
+      if (gba.audio.context && gba.audio.context.state === 'suspended') {
+        gba.audio.context.resume();
+      }
+    }
+  </script>
+</head>
+<body>
+  
+
+  <div id="navbar">
+    <a href="/" class="back-link">
+      <img src="/img/flecha.png" alt="Volver">
+    </a>
+  </div>
+
+  <div id="game-container">
+    <canvas id="screen" width="240" height="160"></canvas> 
+
+    <div id="controls">
+      <input type="file" id="loader" accept=".gba" style="display: none;" onchange="handleFileSelect(event)"> 
+      <button id="select" class="bigbutton" onclick="document.getElementById('loader').click()">SELECT</button>
+      <button id="pause" class="bigbutton" onclick="togglePause()">PAUSE</button>
+      <button class="bigbutton" onclick="reset()">RESET</button>
+      <button class="bigbutton" onclick="screenshot()">Screenshot</button>
+    </div>
+  </div>
+  <div>
+    <p><strong>Controles:</strong><br>Tecla A: Z<br>Tecla B: X<br>Tecla L: A<br>Tecla R: S<br>Keypad<br>
+    </p>
+  </div>
+  <footer><p>&copy; 2024 HSA Games</p>
+  </footer>
+</body>
+</html>
+
