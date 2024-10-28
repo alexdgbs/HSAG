@@ -45,27 +45,17 @@ app.use('/api/update-subscription', updateSubscriptionHandler);
 app.use('/api/upgrade-admin', upgradeAdminHandler);
 app.use('/api/user', userHandler);
 
-async function start() {
-  const isDev = process.env.NODE_ENV !== 'production';
-  const nuxt = await loadNuxt(isDev ? 'dev' : 'start');
+app.get('*', (req, res) => {
+  res.send('Esta ruta manejaría tu frontend dinámico');
+});
 
-  if (isDev) {
-    build(nuxt);
-  }
-
-  // Usar Nuxt para renderizar todas las rutas no coincidentes
-  app.use(nuxt.render);
-
-  // Conectar a MongoDB antes de iniciar el servidor
-  connectDB().then(() => {
-    app.listen(PORT, () => {
-      console.log(`Servidor escuchando en el puerto ${PORT}`);
-    });
-  }).catch(err => {
-    console.error('No se pudo conectar a MongoDB:', err);
+// Conectar a MongoDB antes de iniciar el servidor
+connectDB().then(() => {  
+  app.listen(PORT, () => {    
+    console.log(`Servidor escuchando en el puerto ${PORT}`);  
   });
-}
-
-start();
+}).catch(err => {  
+  console.error('No se pudo conectar a MongoDB:', err);
+});
 
 export default app;
