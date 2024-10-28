@@ -1,4 +1,5 @@
 export default {
+  mode: 'universal',
   env: {
     BASE_API_URL: process.env.BASE_API_URL
   },
@@ -30,8 +31,6 @@ export default {
   build: {},
 
   target: 'server', 
-
-
 
   server: {
     port: 3000, 

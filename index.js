@@ -2,8 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
-import path from 'path';
+import { loadNuxt, build } from 'nuxt';
 import { fileURLToPath } from 'url';
+import path from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,23 +20,20 @@ import updateSubscriptionHandler from './api/updateSubscription.js';
 import upgradeAdminHandler from './api/upgradeAdmin.js';
 import userHandler from './api/user.js';
 
-// Configuración del entorno
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
 dotenv.config({ path: envFile });
-
-console.log("El archivo index.js se está ejecutando");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors({  
-  origin: '*', 
+app.use(cors({
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-app.use(bodyParser.json()); 
+app.use(bodyParser.json());
 
-// Rutas
+// Rutas de API
 app.use('/api/login', loginHandler);
 app.use('/api/cancel-subscription', cancelSubscriptionHandler);
 app.use('/api/execute-payment', executePaymentHandler);
@@ -45,17 +43,27 @@ app.use('/api/update-subscription', updateSubscriptionHandler);
 app.use('/api/upgrade-admin', upgradeAdminHandler);
 app.use('/api/user', userHandler);
 
-app.get('*', (req, res) => {
-  res.send('Esta ruta manejaría tu frontend dinámico');
-});
+// Configuración de Nuxt
+async function start() {
+  const isDev = process.env.NODE_ENV !== 'production';
+  const nuxt = await loadNuxt(isDev ? 'dev' : 'start');
 
-// Conectar a MongoDB antes de iniciar el servidor
-connectDB().then(() => {  
-  app.listen(PORT, () => {    
-    console.log(`Servidor escuchando en el puerto ${PORT}`);  
+  if (isDev) {
+    build(nuxt);
+  }
+
+  app.use(nuxt.render);
+
+  // Conectar a MongoDB antes de iniciar el servidor
+  connectDB().then(() => {
+    app.listen(PORT, () => {
+      console.log(`Servidor escuchando en el puerto ${PORT}`);
+    });
+  }).catch(err => {
+    console.error('No se pudo conectar a MongoDB:', err);
   });
-}).catch(err => {  
-  console.error('No se pudo conectar a MongoDB:', err);
-});
+}
+
+start();
 
 export default app;
